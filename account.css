@@ -1,0 +1,89 @@
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    padding-bottom: 5em;
+    font-family: sans-serif;
+}
+
+dialog {
+    padding: 20px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
+
+header {
+    display: flex;
+     justify-content: space-between;
+     align-items: center;
+     padding: 1em;
+     background-color: #f8f9fa;
+     border-bottom: 1px solid #dee2e6;
+}
+
+main {
+    width: 30em;
+    margin-left: 3em;
+}
+
+.user-chat {
+    padding: 1em;
+    border: 1px solid black;
+    border-radius: 0.5em;
+    margin-bottom: 1.5em;
+}
+
+form[id="chat"] {
+    position: fixed;
+    bottom: 1em;
+    left: 1em;
+    right: 1em;
+    height: 3em;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+textarea {
+    flex: 0 1 80%;
+    /* This means the textarea will take up 80% of the available space */
+    resize: none;
+    border-radius: 2em;
+    padding: 1em;
+}
+
+button[id="generate"] {
+    flex: 0 1 17%;
+    margin: 0.5em;
+    /* This means the button will take up 20% of the available space */
+    border-radius: 2em;
+    padding: 0.1em;
+    height: 1.5em;
+    background-color: whitesmoke;
+    font-size: 32px;
+}
+
+
+button[id="record"] {
+    font-size: 24px;
+    background-color: transparent;
+    cursor: pointer;
+}
+
+button[id="mute"] {
+    font-size: 24px;
+    background-color: transparent;
+    cursor: pointer;
+    margin-left: 0.25em;
+}
+
+button[id="help"] {
+    font-size: 24px;
+    background-color: transparent;
+    cursor: pointer;
+    margin-left: 0.25em;
+}
