@@ -10,7 +10,6 @@ closeButton.addEventListener('click', () => {
     dialog.close();
 });
 
-// Close the dialog when clicking outside of it
 dialog.addEventListener('click', (e) => {
     const dialogDimensions = dialog.getBoundingClientRect();
     if (
