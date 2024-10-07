@@ -12,7 +12,7 @@ from fastapi.responses import (
     StreamingResponse
 )
 
-import anthropic  # Assuming you're using the Anthropic language model
+import anthropic
 import newsaccounts
 import newsstore
 
@@ -49,54 +49,59 @@ def tool(tool_func, name, desc, params={}):
     ALL_TOOLS_LIST.append(result['spec'])
     return result
 
-# Glue functions with empty stubs (print statements)
-def add_feed_glue(db, name, url):
-    print(f"add_feed called with name={name}, url={url}")
-    # Implementation goes here
-
 def delete_feed_glue(db, feed_id):
     print(f"delete_feed called with feed_id={feed_id}")
-    # Implementation goes here
+    success = db.delete_feed(feed_id)
+    return {"text": f"Feed with ID {feed_id} deleted." if success else f"Feed with ID {feed_id} not found."}
+
 
 def list_feeds_glue(db):
     print("list_feeds called")
-    # Implementation goes here
+    feeds = db.list_feeds()
+    feed_list_text = "\n".join([f"ID: {feed[0]}, Name: {feed[1]}, URL: {feed[2]}" for feed in feeds])
+    return {"text": f"Subscribed feeds:\n{feed_list_text}" if feeds else "No subscribed feeds."}
+
 
 def select_feed_glue(db, feed_id):
     print(f"select_feed called with feed_id={feed_id}")
-    # Implementation goes here
-    return newsstore.Posts(db.db, feed_id)
+    posts_instance = db.select_feed(feed_id)
+    if posts_instance is None:
+        return {"text": f"Feed with ID {feed_id} does not exist."}
+    return {"text": "Feed selected."}
+
 
 def list_posts_glue(db):
     print("list_posts called")
-    # Implementation goes here
+    posts = db.list_posts()
+    post_list_text = "\n".join([f"ID: {post[0]}, Title: {post[1]}" for post in posts])
+    return {"text": f"Unread posts:\n{post_list_text}" if posts else "No unread posts."}
+
 
 def read_post_glue(db, post_id):
     print(f"read_post called with post_id={post_id}")
-    # Implementation goes here
+    post = db.read_post(post_id)
+    if post:
+        return {"text": f"Reading post:\nTitle: {post['title']}\nContent: {post['content']}"}
+    return {"text": f"Post with ID {post_id} not found or already read."}
+
 
 def list_read_glue(db):
     print("list_read called")
-    # Implementation goes here
+    posts = db.list_read()
+    post_list_text = "\n".join([f"ID: {post[0]}, Title: {post[1]}" for post in posts])
+    return {"text": f"Read posts:\n{post_list_text}" if posts else "No read posts."}
+
 
 def mark_unread_glue(db, post_id):
     print(f"mark_unread called with post_id={post_id}")
-    # Implementation goes here
+    success = db.mark_unread(post_id)
+    return {"text": f"Post with ID {post_id} marked as unread." if success else f"Post with ID {post_id} not found or already unread."}
+
 
 def do_not_understand_glue(db, error):
     print(f"do_not_understand called with error={error}")
     return {"text": f"I don't understand. {error}"}
 
-# Registering tool functions
-add_feed = tool(
-    add_feed_glue,
-    "add_feed",
-    "Add a new RSS feed with a given name and URL.",
-    {
-        "name": ("string", "The name of the new feed."),
-        "url": ("string", "The URL of the RSS feed.")
-    }
-)
 
 delete_feed = tool(
     delete_feed_glue,
@@ -200,31 +205,60 @@ async def create_account(name: str = Form(...)):
 
 @app.get("/account/{account_id}/")
 async def render_account(account_id: str):
+    a = newsaccounts.Accounts()
+    acc = a.get_account(account_id)
+    if acc is None:
+        return Response(status_code=404)
     return HTMLResponse(
         content=open("account.html").read(),
         status_code=200
     )
 
-def get_next(gen):
-    try:
-        return next(gen)
-    except StopIteration:
-        return None
 
-async def event_generator(db, q, account, initial=None):
+
+@app.get("/account/{account_id}.json")
+async def render_accountjson(account_id: str):
+    a = newsaccounts.Accounts()
+    acc = a.get_account(account_id)
+    if acc is None:
+        return Response(status_code=404)
+    return {
+        "feeds": [
+            {
+                "id": feed[0],
+                "name": feed[1],
+                "url": feed[2]
+            }
+            for feed in acc.list_feeds()
+        ]
+    }
+
+@app.post("/account/{account_id}/feed")
+async def create_feed(account_id: str):
+    a = newsaccounts.Accounts()
+    feeds = a.get_account(account_id)
+    if feeds is not None:
+        feeds.add_feed
+    return RedirectResponse(url=f"/account/{account_id}/", status_code=303)
+
+
+
+
+
+async def event_generator(db, q, initial=None):
     loop = asyncio.get_running_loop()
-    client = anthropic.Anthropic()  # Initialize your language model client
+    client = anthropic.Anthropic()
     initial_message = "You are a natural language interface interpreter for a news reader app. User input has been translated through speech to text so interpret the request assuming minor transcription errors.\n\nFeeds:\n"
     feeds_list = ""
-    selected_feed = ""
 
     feeds = db.list_feeds()
+    selected = db.select_feed(1)
+    selected_feed = selected.name
     for feed in feeds:
         feeds_list += f"ID: {feed[0]}, Name: {feed[1]}, URL: {feed[2]}\n"
+
     initial_message += feeds_list
 
-    # Assuming the user can select a feed (you may need to implement feed selection tracking)
-    # For now, we'll just initialize selected_feed as empty
     initial_message += "\nNo feed selected.\n"
 
     history = []
@@ -235,17 +269,21 @@ async def event_generator(db, q, account, initial=None):
         yield 'data: {"finish_reason": "stop"}\n\n'
 
     jsondata = json.dumps({
-        "content": {"title": account['name'], "text": f"""Welcome, {account['name']}.
+        "content": {"title": db.name, "text": f"""Welcome, {db.name}.
 
 Please save this URL somewhere safe and use it to access your feeds in the future.
 
 Do not share the URL.
 
-Your feeds:
+Your Feeds:
+
 {feeds_list}
+
+Selected Feed:
+
 {selected_feed}
 """}})
-    print("Welcome message sent.")
+
     yield f"data: {jsondata}\n\n"
     yield 'data: {"finish_reason": "stop"}\n\n'
 
@@ -263,8 +301,7 @@ Your feeds:
         result = await loop.run_in_executor(
             thread_pool,
             lambda: client.messages.create(
-                # Replace with your specific model parameters
-                model="claude-1",
+                model="claude-3-haiku",
                 max_tokens=1024,
                 tools=ALL_TOOLS_LIST,
                 tool_choice={"type": "any"},
@@ -313,16 +350,16 @@ Your feeds:
         print("Updated history:", history)
         yield 'data: {"finish_reason": "stop"}\n\n'
 
+
 @app.get("/account/{account_id}/conversation")
 async def conversation(account_id: str):
     conv_id = str(uuid.uuid4())
     queue = asyncio.Queue()
-    db = newsstore.Feeds(f"db/{account_id}.db")
     a = newsaccounts.Accounts()
-    account = a.get_account(account_id)
+    db = a.get_account(account_id)
     convs[conv_id] = queue
     return StreamingResponse(
-        event_generator(db, queue, account, initial={"id": conv_id}),
+        event_generator(db, queue, initial={"id": conv_id}),
         media_type="text/event-stream"
     )
 

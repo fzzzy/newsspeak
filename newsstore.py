@@ -1,20 +1,24 @@
+
+
+
 import sqlite3
 import feedparser
-import datetime
+
 
 class Feeds(object):
-    def __init__(self, sqlitepath):
+    def __init__(self, sqlitepath, account_name):
         self.path = sqlitepath
+        self.name = account_name
         self.db = sqlite3.connect(self.path)
         self.cursor = self.db.cursor()
-        # Create feeds table
+
         self.cursor.execute('''CREATE TABLE IF NOT EXISTS feeds
                               (id INTEGER PRIMARY KEY AUTOINCREMENT,
                                name TEXT NOT NULL,
                                url TEXT NOT NULL,
                                created_at DATETIME DEFAULT CURRENT_TIMESTAMP)
                             ''')
-        # Create posts table
+
         self.cursor.execute('''CREATE TABLE IF NOT EXISTS posts
                               (id INTEGER PRIMARY KEY AUTOINCREMENT,
                                title TEXT NOT NULL,
@@ -24,17 +28,43 @@ class Feeds(object):
                                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                                FOREIGN KEY(feed_id) REFERENCES feeds(id))
                             ''')
+        self.cursor.execute('''CREATE TABLE IF NOT EXISTS metadata
+                              (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                               last_modified DATETIME DEFAULT CURRENT_TIMESTAMP,
+                               selected_feed INTEGER NOT NULL)''')
         self.db.commit()
-        print("Initialized Feeds and Posts tables.")
+        self.cursor.execute("SELECT id FROM feeds")
+        results = self.cursor.fetchall()
+        if not len(results):
+            self.add_feed("Default", "http://scripting.com/rss.xml")
+        self.cursor.execute("SELECT id FROM metadata")
+        results = self.cursor.fetchall()
+        if not len(results):
+            self.cursor.execute(
+                "INSERT INTO metadata (selected_feed) VALUES (1)")
+            self.db.commit()
+        self.cursor.execute("SELECT selected_feed FROM metadata WHERE id = 1")
+        result = self.cursor.fetchone()
+        self.selected_feed_id = result[0]
+        self.cursor.execute(
+            "SELECT id FROM feeds")
+        result = self.cursor.fetchall()
+        for (i, (li, )) in enumerate(result):
+            print("sli", repr(self.selected_feed_id), i, repr(li))
+            if li == self.selected_feed_id:
+                self.selected_feed = i + 1
+                break
+        else:
+            self.selected_feed = 1
+        print("SELECTED feed", self.selected_feed)
 
     def add_feed(self, name, url):
-        # Insert the new feed into the feeds table
         self.cursor.execute('''INSERT INTO feeds (name, url)
                                VALUES (?, ?)''', (name, url))
         feed_id = self.cursor.lastrowid
         self.db.commit()
         print(f"Added feed: {name}, URL: {url}")
-        # Fetch and store posts from the new feed
         self.fetch_and_store_posts(feed_id, url)
         return feed_id
 
@@ -42,7 +72,7 @@ class Feeds(object):
         # Parse the RSS feed
         d = feedparser.parse(url)
         for entry in d.entries:
-            title = entry.title
+            title = getattr(entry, 'title', '')
             content = entry.description if 'description' in entry else ''
             # Check if the post already exists
             self.cursor.execute('''SELECT id FROM posts WHERE title = ? AND feed_id = ?''',
@@ -55,14 +85,18 @@ class Feeds(object):
         self.db.commit()
         print(f"Fetched and stored posts for feed ID: {feed_id}")
 
-    def delete_feed(self, feed_id):
-        # Delete posts associated with the feed
-        self.cursor.execute('''DELETE FROM posts WHERE feed_id = ?''', (feed_id,))
-        # Delete the feed itself
-        self.cursor.execute('''DELETE FROM feeds WHERE id = ?''', (feed_id,))
-        self.db.commit()
-        print(f"Deleted feed with ID: {feed_id}")
-        return self.cursor.rowcount > 0
+    def delete_feed(self, index):
+        self.cursor.execute('''SELECT id FROM feeds LIMIT 1 OFFSET ?''', (index-1,))
+        result = self.cursor.fetchone()
+        if result:
+            feed_id = result[0]
+            self.cursor.execute('''DELETE FROM posts WHERE feed_id = ?''', (feed_id,))
+            self.cursor.execute('''DELETE FROM feeds WHERE id = ?''', (feed_id,))
+            self.db.commit()
+            print(f"Deleted feed at index: {index}")
+            return True
+        print(f"No feed found at index: {index}")
+        return False
 
     def list_feeds(self):
         self.cursor.execute('''SELECT id, name, url FROM feeds''')
@@ -70,28 +104,31 @@ class Feeds(object):
         print("Listing all feeds")
         return feeds
 
-    def select_feed(self, feed_id):
-        # Check if the feed exists
-        self.cursor.execute('''SELECT id FROM feeds WHERE id = ?''', (feed_id,))
-        if self.cursor.fetchone():
-            print(f"Selecting feed with ID: {feed_id}")
+    def select_feed(self, index):
+        self.cursor.execute('''SELECT id FROM feeds LIMIT 1 OFFSET ?''', (index-1,))
+        result = self.cursor.fetchone()
+        if result:
+            feed_id = result[0]
+            print(f"Selecting feed at index: {index}")
             return Posts(self.db, feed_id)
         else:
-            print(f"Feed with ID {feed_id} does not exist.")
+            print(f"No feed found at index: {index}")
             return None
 
     def update_all_feeds(self):
-        # Fetch and update posts for all feeds
         self.cursor.execute('''SELECT id, url FROM feeds''')
         feeds = self.cursor.fetchall()
         for feed_id, url in feeds:
             self.fetch_and_store_posts(feed_id, url)
+
 
 class Posts(object):
     def __init__(self, db, feed_id):
         self.db = db
         self.cursor = self.db.cursor()
         self.feed_id = feed_id
+        self.cursor.execute('''SELECT name FROM feeds WHERE id = ?''', (self.feed_id,))
+        self.name = self.cursor.fetchone()[0]
 
     def list_posts(self):
         self.cursor.execute('''SELECT id, title FROM posts
@@ -101,19 +138,19 @@ class Posts(object):
         print(f"Listing unread posts for feed ID: {self.feed_id}")
         return posts
 
-    def read_post(self, post_id):
-        # Fetch the post content
-        self.cursor.execute('''SELECT title, content FROM posts
-                               WHERE id = ? AND feed_id = ?''', (post_id, self.feed_id))
+    def read_post(self, index):
+        self.cursor.execute('''SELECT id, title, content FROM posts
+                               WHERE feed_id = ? AND read = 0
+                               ORDER BY created_at DESC LIMIT 1 OFFSET ?''', (self.feed_id, index-1))
         post = self.cursor.fetchone()
         if post:
-            # Mark the post as read
+            post_id, title, content = post
             self.cursor.execute('''UPDATE posts SET read = 1 WHERE id = ?''', (post_id,))
             self.db.commit()
-            print(f"Reading post ID: {post_id}")
-            return {'title': post[0], 'content': post[1]}
+            print(f"Reading post at index: {index}")
+            return {'title': title, 'content': content}
         else:
-            print(f"Post ID {post_id} not found in feed ID {self.feed_id}")
+            print(f"No unread post found at index: {index} for feed ID {self.feed_id}")
             return None
 
     def list_read(self):
@@ -124,9 +161,18 @@ class Posts(object):
         print(f"Listing read posts for feed ID: {self.feed_id}")
         return posts
 
-    def mark_unread(self, post_id):
-        self.cursor.execute('''UPDATE posts SET read = 0 WHERE id = ? AND feed_id = ?''',
-                            (post_id, self.feed_id))
-        self.db.commit()
-        print(f"Marked post ID: {post_id} as unread")
-        return self.cursor.rowcount > 0
+    def mark_unread(self, index):
+        self.cursor.execute('''SELECT id FROM posts
+                               WHERE feed_id = ? AND read = 1
+                               ORDER BY created_at DESC LIMIT 1 OFFSET ?''', (self.feed_id, index-1))
+        result = self.cursor.fetchone()
+        if result:
+            post_id = result[0]
+            self.cursor.execute('''UPDATE posts SET read = 0 WHERE id = ?''', (post_id,))
+            self.db.commit()
+            print(f"Marked post at index: {index} as unread")
+            return True
+        print(f"No read post found at index: {index} to mark as unread for feed ID {self.feed_id}")
+        return False
+
+
