@@ -255,7 +255,7 @@ async def event_generator(db, q, initial=None):
     selected = db.select_feed(1)
     selected_feed = selected.name
     for feed in feeds:
-        feeds_list += f"ID: {feed[0]}, Name: {feed[1]}, URL: {feed[2]}\n"
+        feeds_list += f"{feed[0]}. {feed[1]}\n"
 
     initial_message += feeds_list
 

@@ -37,7 +37,7 @@ class Feeds(object):
         self.cursor.execute("SELECT id FROM feeds")
         results = self.cursor.fetchall()
         if not len(results):
-            self.add_feed("Default", "http://scripting.com/rss.xml")
+            self.add_feed("scripting.com", "http://scripting.com/rss.xml")
         self.cursor.execute("SELECT id FROM metadata")
         results = self.cursor.fetchall()
         if not len(results):
