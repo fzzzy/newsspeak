@@ -14,7 +14,7 @@ from fastapi.responses import (
 
 import anthropic
 import newsaccounts
-import newsstore
+
 
 thread_pool = ThreadPoolExecutor()
 convs = {}
@@ -49,40 +49,45 @@ def tool(tool_func, name, desc, params={}):
     ALL_TOOLS_LIST.append(result['spec'])
     return result
 
-def delete_feed_glue(db, feed_id):
-    print(f"delete_feed called with feed_id={feed_id}")
-    success = db.delete_feed(feed_id)
-    return {"text": f"Feed with ID {feed_id} deleted." if success else f"Feed with ID {feed_id} not found."}
+
+def delete_feed_glue(db, feed_index):
+    print(f"delete_feed called with feed_index={feed_index}")
+    success = db.delete_feed(feed_index)
+    return {"text": f"Feed with ID {feed_index} deleted." if success else f"Feed with ID {feed_index} not found."}
 
 
 def list_feeds_glue(db):
     print("list_feeds called")
     feeds = db.list_feeds()
-    feed_list_text = "\n".join([f"ID: {feed[0]}, Name: {feed[1]}, URL: {feed[2]}" for feed in feeds])
+    feed_list_text = "\n".join(
+        [f"{i}. Name: {feed[1]}, URL: {feed[2]}\n"
+         for i, feed in enumerate(feeds)])
     return {"text": f"Subscribed feeds:\n{feed_list_text}" if feeds else "No subscribed feeds."}
 
 
-def select_feed_glue(db, feed_id):
-    print(f"select_feed called with feed_id={feed_id}")
-    posts_instance = db.select_feed(feed_id)
+def select_feed_glue(db, feed_index):
+    print(f"select_feed called with feed_index={feed_index}")
+    posts_instance = db.select_feed(feed_index)
     if posts_instance is None:
-        return {"text": f"Feed with ID {feed_id} does not exist."}
+        return {"text": f"Feed with ID {feed_index} does not exist."}
     return {"text": "Feed selected."}
 
 
 def list_posts_glue(db):
     print("list_posts called")
-    posts = db.list_posts()
-    post_list_text = "\n".join([f"ID: {post[0]}, Title: {post[1]}" for post in posts])
+    feed = db.select_feed(db.selected_feed)
+    posts = feed.list_posts()
+    post_list_text = "\n".join([f"{i}. {post[1]}\n" for i, post in enumerate(posts)])
     return {"text": f"Unread posts:\n{post_list_text}" if posts else "No unread posts."}
 
 
-def read_post_glue(db, post_id):
-    print(f"read_post called with post_id={post_id}")
-    post = db.read_post(post_id)
+def read_post_glue(db, post_index):
+    print(f"read_post called with post_id={post_index}")
+    feed = db.select_feed(db.selected_feed)
+    post = feed.read_post(post_index)
     if post:
         return {"text": f"Reading post:\nTitle: {post['title']}\nContent: {post['content']}"}
-    return {"text": f"Post with ID {post_id} not found or already read."}
+    return {"text": f"Post with ID {post_index} not found or already read."}
 
 
 def list_read_glue(db):
@@ -92,10 +97,10 @@ def list_read_glue(db):
     return {"text": f"Read posts:\n{post_list_text}" if posts else "No read posts."}
 
 
-def mark_unread_glue(db, post_id):
-    print(f"mark_unread called with post_id={post_id}")
-    success = db.mark_unread(post_id)
-    return {"text": f"Post with ID {post_id} marked as unread." if success else f"Post with ID {post_id} not found or already unread."}
+def mark_unread_glue(db, post_index):
+    print(f"mark_unread called with post_id={post_index}")
+    success = db.mark_unread(post_index)
+    return {"text": f"Post with index {post_index} marked as unread." if success else f"Post with index {post_index} not found or already unread."}
 
 
 def do_not_understand_glue(db, error):
@@ -106,9 +111,9 @@ def do_not_understand_glue(db, error):
 delete_feed = tool(
     delete_feed_glue,
     "delete_feed",
-    "Delete a feed by its ID.",
+    "Delete a feed by Index. Indexes start at one.",
     {
-        "feed_id": ("number", "The ID of the feed to delete.")
+        "feed_index": ("number", "The index of the feed to delete.")
     }
 )
 
@@ -121,9 +126,9 @@ list_feeds = tool(
 select_feed = tool(
     select_feed_glue,
     "select_feed",
-    "Select a feed by its ID to perform actions on its posts.",
+    "Select a feed by index to perform actions on its posts.",
     {
-        "feed_id": ("number", "The ID of the feed to select.")
+        "feed_index": ("number", "The index of the feed to select.")
     }
 )
 
@@ -133,12 +138,13 @@ list_posts = tool(
     "List all unread posts in the selected feed."
 )
 
+
 read_post = tool(
     read_post_glue,
     "read_post",
-    "Read a post by its ID from the selected feed.",
+    "Read a post by index from the selected feed.",
     {
-        "post_id": ("number", "The ID of the post to read.")
+        "post_index": ("number", "The index of the post to read.")
     }
 )
 
@@ -153,7 +159,7 @@ mark_unread = tool(
     "mark_unread",
     "Mark a read post as unread in the selected feed.",
     {
-        "post_id": ("number", "The ID of the post to mark as unread.")
+        "post_index": ("number", "The index of the post to mark as unread.")
     }
 )
 
@@ -195,7 +201,7 @@ async def serve_help():
         content = file.read()
     return Response(content=content, media_type="application/javascript")
 
-@app.post("/account")
+@app.post("/account/")
 async def create_account(name: str = Form(...)):
     a = newsaccounts.Accounts()
     user_id = str(uuid.uuid4())
@@ -259,7 +265,7 @@ async def event_generator(db, q, initial=None):
 
     initial_message += feeds_list
 
-    initial_message += "\nNo feed selected.\n"
+    initial_message += "\nSelected Feed: {selected_feed}\n\n"
 
     history = []
 
@@ -301,7 +307,7 @@ Selected Feed:
         result = await loop.run_in_executor(
             thread_pool,
             lambda: client.messages.create(
-                model="claude-3-haiku",
+                model="claude-3-haiku-20240307",
                 max_tokens=1024,
                 tools=ALL_TOOLS_LIST,
                 tool_choice={"type": "any"},
