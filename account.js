@@ -174,7 +174,7 @@ async function gotState(s) {
     if (!s['feeds']) {
         create_recognition();
         postConversation();
-        const result = await fetch(document.location + "/feeds.json");
+        const result = await fetch("feeds.json");
         const feeds = await result.json();
         state.set_state(feeds);
         return;

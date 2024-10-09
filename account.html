@@ -21,11 +21,17 @@
     </main>
     <div id="sidebar">
         <h1>Sidebar</h1>
-        <ul data-slot="feeds">
+        <ol data-slot="feeds">
             <li data-pat="feed">
                 <span data-slot="feed-name">Feed Name</span>
             </li>
-        </ul>
+        </ol>
+        <form action="feed" method="POST">
+            <div>Add feed</div>
+            <input type="text" name="feedName" placeholder="Name" />
+            <input type="text" name="feedURL" placeholder="URL" />
+            <button>Add</button>
+        </form>
     </div>
     <footer>
         <form id="chat" method="post" action="/chat/">
@@ -37,7 +43,6 @@
     <dialog id="helpDialog">
         <button id="closeDialog">Close</button>
         <h2>Things You Can Say</h2>
-        <p>Add a feed called Tech News</p>
         <p>List feeds</p>
         <p>Select the feed Tech News</p>
         <p>Delete feed Tech News</p>

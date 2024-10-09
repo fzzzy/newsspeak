@@ -220,9 +220,9 @@ async def create_account(name: str = Form(...)):
     user_id = str(uuid.uuid4())
     if a.add_account(name, user_id):
         print(f"Account created for: {name} {user_id}")
-    return RedirectResponse(url=f"/account/{user_id}", status_code=303)
+    return RedirectResponse(url=f"/account/{user_id}/", status_code=303)
 
-@app.get("/account/{account_id}")
+@app.get("/account/{account_id}/")
 async def render_account(account_id: str):
     a = newsaccounts.Accounts()
     acc = a.get_account(account_id)
@@ -255,11 +255,11 @@ async def render_accountjson(account_id: str):
 
 
 @app.post("/account/{account_id}/feed")
-async def create_feed(account_id: str):
+async def create_feed(account_id: str, feedName: str = Form(...), feedURL: str = Form(...)):
     a = newsaccounts.Accounts()
     feeds = a.get_account(account_id)
     if feeds is not None:
-        feeds.add_feed
+        feeds.add_feed(feedName, feedURL)
     return RedirectResponse(url=f"/account/{account_id}/", status_code=303)
 
 
