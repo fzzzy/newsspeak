@@ -1,4 +1,7 @@
 
+import { patslot, state } from "./mumulib.js";
+
+
 const main = document.getElementById("main");
 const chat = document.getElementById("chat");
 const inputText = document.getElementById("inputText");
@@ -167,7 +170,25 @@ async function postConversation() {
 }
 
 
-create_recognition();
+async function gotState(s) {
+    if (!s['feeds']) {
+        create_recognition();
+        postConversation();
+        const result = await fetch(document.location + "/feeds.json");
+        const feeds = await result.json();
+        state.set_state(feeds);
+        return;
+    }
+    console.log("STATE", s);
+    const nodes = [];
+    for (const f of s['feeds']) {
+        nodes.push(patslot.clone_pat('feed', {"feed-name": f['name']}));
+    }
+    patslot.fill_body({'feeds': nodes});
+}
 
-window.onload = postConversation;
+
+
+state.onstate(gotState);
+
 

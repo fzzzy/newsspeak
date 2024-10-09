@@ -189,6 +189,19 @@ async def serve_css():
         content = file.read()
     return Response(content=content, media_type="text/css")
 
+@app.get("/mumulib.js")
+async def serve_mumulib():
+    with open("mumulib.js", "r") as file:
+        content = file.read()
+    return Response(content=content, media_type="application/javascript")
+
+@app.get("/mumulib.js.map")
+async def serve_mumulib_map():
+    with open("mumulib.js.map", "r") as file:
+        content = file.read()
+    return Response(content=content, media_type="application/javascript")
+
+
 @app.get("/account.js")
 async def serve_js():
     with open("account.js", "r") as file:
@@ -207,9 +220,9 @@ async def create_account(name: str = Form(...)):
     user_id = str(uuid.uuid4())
     if a.add_account(name, user_id):
         print(f"Account created for: {name} {user_id}")
-    return RedirectResponse(url=f"/account/{user_id}/", status_code=303)
+    return RedirectResponse(url=f"/account/{user_id}", status_code=303)
 
-@app.get("/account/{account_id}/")
+@app.get("/account/{account_id}")
 async def render_account(account_id: str):
     a = newsaccounts.Accounts()
     acc = a.get_account(account_id)
@@ -222,8 +235,9 @@ async def render_account(account_id: str):
 
 
 
-@app.get("/account/{account_id}.json")
+@app.get("/account/{account_id}/feeds.json")
 async def render_accountjson(account_id: str):
+    print("account")
     a = newsaccounts.Accounts()
     acc = a.get_account(account_id)
     if acc is None:
@@ -238,6 +252,7 @@ async def render_accountjson(account_id: str):
             for feed in acc.list_feeds()
         ]
     }
+
 
 @app.post("/account/{account_id}/feed")
 async def create_feed(account_id: str):

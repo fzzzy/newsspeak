@@ -21,6 +21,11 @@
     </main>
     <div id="sidebar">
         <h1>Sidebar</h1>
+        <ul data-slot="feeds">
+            <li data-pat="feed">
+                <span data-slot="feed-name">Feed Name</span>
+            </li>
+        </ul>
     </div>
     <footer>
         <form id="chat" method="post" action="/chat/">
@@ -41,7 +46,7 @@
         <p>List read posts</p>
         <p>Mark post number 1 as unread</p>
     </dialog>
-    <script src="/account.js"></script>
+    <script src="/account.js" type="module"></script>
     <script src="/help.js"></script>
 </body>
 
