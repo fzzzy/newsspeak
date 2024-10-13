@@ -18,11 +18,11 @@ let utterance = null;
 
 mute.addEventListener('click', function () {
     if (muted) {
-        mute.textContent = "🔇 Enable text to speech";
+        mute.textContent = "🔇";
         mute.title = "Enable text to speech.";
         muted = false;
     } else {
-        mute.textContent = "🔈 Disable text to speech";
+        mute.textContent = "🔈";
         mute.title = "Disable text to speech.";
         muted = true;
     }
@@ -66,7 +66,7 @@ function create_recognition() {
 function start_recognition() {
     if (recognizing) {
         recognition.stop();
-        recordButton.textContent = "👂 Enable speech recognition";
+        recordButton.textContent = "🔴👂 Enable speech recognition";
         recordButton.setAttribute("aria-label", "record");
         recordButton.title = "Enable speech recognition.";
         recognizing = false;
@@ -74,7 +74,7 @@ function start_recognition() {
     }
 
     recognition.start();
-    recordButton.textContent = "🛑 Disable speech recognition";
+    recordButton.textContent = "🛑👂 Disable speech recognition";
     recordButton.setAttribute("aria-label", "stop");
     recordButton.title = "Disable speech recognition.";
     recognizing = true;

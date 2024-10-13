@@ -255,7 +255,7 @@ async def render_accountjson(account_id: str):
 
 
 @app.post("/account/{account_id}/feed")
-async def create_feed(account_id: str, feedName: str = Form(...), feedURL: str = Form(...)):
+async def add_feed(account_id: str, feedName: str = Form(...), feedURL: str = Form(...)):
     a = newsaccounts.Accounts()
     feeds = a.get_account(account_id)
     if feeds is not None:
@@ -280,7 +280,7 @@ async def event_generator(db, q, initial=None):
 
     initial_message += feeds_list
 
-    initial_message += "\nSelected Feed: {selected_feed}\n\n"
+    initial_message += f"\nSelected Feed: {selected_feed}\n\n"
 
     history = []
 
