@@ -30,7 +30,7 @@ class Accounts(object):
                                    WHERE uuid = ?''', (uuid,))
             account = self.cursor.fetchone()
             if account:
-                return newsstore.Feeds(account[2], account[1])
+                return newsstore.Feeds(f"db/{account[2]}", account[1])
             else:
                 return None
         except sqlite3.Error as e:
