@@ -60,7 +60,7 @@ def list_feeds_glue(db):
     print("list_feeds called")
     feeds = db.list_feeds()
     feed_list_text = "\n".join(
-        [f"{i}. Name: {feed[1]}, URL: {feed[2]}\n"
+        [f"{i + 1}. Name: {feed[1]}, URL: {feed[2]}\n"
          for i, feed in enumerate(feeds)])
     return {"text": f"Subscribed feeds:\n{feed_list_text}" if feeds else "No subscribed feeds."}
 
@@ -77,7 +77,7 @@ def list_posts_glue(db):
     print("list_posts called")
     feed = db.select_feed(db.selected_feed)
     posts = feed.list_posts()
-    post_list_text = "\n".join([f"{i}. {post[1]}\n" for i, post in enumerate(posts)])
+    post_list_text = "\n".join([f"{i + 1}. {post[1]}\n" for i, post in enumerate(posts)])
     return {"text": f"Unread posts:\n{post_list_text}" if posts else "No unread posts."}
 
 
