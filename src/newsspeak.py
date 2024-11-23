@@ -189,6 +189,12 @@ async def serve_css():
         content = file.read()
     return Response(content=content, media_type="text/css")
 
+@app.get("/index.css")
+async def serve_index_css():
+    with open("../static/index.css", "r") as file:
+        content = file.read()
+    return Response(content=content, media_type="text/css")
+
 @app.get("/mumulib.js")
 async def serve_mumulib():
     with open("../static/mumulib.js", "r") as file:
