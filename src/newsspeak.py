@@ -175,42 +175,42 @@ do_not_understand = tool(
 @app.get("/", response_class=HTMLResponse)
 async def root():
     return HTMLResponse(
-        content=open("index.html").read(),
+        content=open("../static/index.html").read(),
         status_code=200
     )
 
 @app.get("/favicon.ico")
 async def favicon():
-    return FileResponse("favicon.ico")
+    return FileResponse("../static/favicon.ico")
 
 @app.get("/account.css")
 async def serve_css():
-    with open("account.css", "r") as file:
+    with open("../static/account.css", "r") as file:
         content = file.read()
     return Response(content=content, media_type="text/css")
 
 @app.get("/mumulib.js")
 async def serve_mumulib():
-    with open("mumulib.js", "r") as file:
+    with open("../static/mumulib.js", "r") as file:
         content = file.read()
     return Response(content=content, media_type="application/javascript")
 
 @app.get("/mumulib.js.map")
 async def serve_mumulib_map():
-    with open("mumulib.js.map", "r") as file:
+    with open("../static/mumulib.js.map", "r") as file:
         content = file.read()
     return Response(content=content, media_type="application/javascript")
 
 
 @app.get("/account.js")
 async def serve_js():
-    with open("account.js", "r") as file:
+    with open("../static/account.js", "r") as file:
         content = file.read()
     return Response(content=content, media_type="application/javascript")
 
 @app.get("/help.js")
 async def serve_help():
-    with open("help.js", "r") as file:
+    with open("../static/help.js", "r") as file:
         content = file.read()
     return Response(content=content, media_type="application/javascript")
 
@@ -229,7 +229,7 @@ async def render_account(account_id: str):
     if acc is None:
         return Response(status_code=404)
     return HTMLResponse(
-        content=open("account.html").read(),
+        content=open("../static/account.html").read(),
         status_code=200
     )
 
