@@ -3,7 +3,7 @@ import newsstore
 
 class Accounts(object):
     def __init__(self):
-        self.path = "db/accounts.db"
+        self.path = "../db/accounts.db"
         self.db = sqlite3.connect(self.path)
         self.cursor = self.db.cursor()
         self.cursor.execute('''CREATE TABLE IF NOT EXISTS accounts
@@ -30,7 +30,7 @@ class Accounts(object):
                                    WHERE uuid = ?''', (uuid,))
             account = self.cursor.fetchone()
             if account:
-                return newsstore.Feeds(f"db/{account[2]}", account[1])
+                return newsstore.Feeds(f"../db/{account[2]}", account[1])
             else:
                 return None
         except sqlite3.Error as e:

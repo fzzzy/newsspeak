@@ -1,4 +1,3 @@
-# todospeak
+# newsspeak
 
-Talk to your todo list
-
+Talk to your rss feed
